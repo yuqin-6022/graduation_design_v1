@@ -49,16 +49,16 @@ if __name__ == '__main__':
     start_time = time.time()
 
     # 设置gpu---------------------------------------------------------------------------------
-    # os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+    os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 
-    # gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
-    # cpus = tf.config.experimental.list_physical_devices(device_type='CPU')
-    # print(gpus, cpus)
+    gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
+    cpus = tf.config.experimental.list_physical_devices(device_type='CPU')
+    print(gpus, cpus)
 
-    # tf.config.experimental.set_virtual_device_configuration(
-    #     gpus[0],
-    #     [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)]
-    # )
+    tf.config.experimental.set_virtual_device_configuration(
+        gpus[0],
+        [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)]
+    )
 
     # for gpu in gpus:
     #     tf.config.experimental.set_virtual_device_configuration(
@@ -75,7 +75,7 @@ if __name__ == '__main__':
     CUR_PATH = os.getcwd()
     DATETIME = datetime.now().strftime('%Y%m%d%H%M%S')
 
-    EPOCHS = 100000
+    EPOCHS = 150000
     BATCH_SIZE = 1024
     LEARNING_RATE = 0.01
 
@@ -113,7 +113,7 @@ if __name__ == '__main__':
     cw = dict(zip(np.unique(y_train), my_class_weight))
     print(cw)
 
-    softmax_num = len(train_df[y_type].unique())
+    softmax_num = len(train_df[y_type].unique()) + (y_type == 'ED')  # ED从1~9开始，所以补一个输出
     model = tf.keras.Sequential([
         tf.keras.layers.Input(shape=(x_train.shape[1], )),
         tf.keras.layers.Dense(units=softmax_num, activation='softmax')

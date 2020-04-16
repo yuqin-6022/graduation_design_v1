@@ -152,8 +152,8 @@ class MyHyperModel(HyperModel):
             },
             loss_weights={
                 'dloc_softmax': hp.Float('dloc_loss_weights', min_value=0.1, max_value=1, step=0.05),
-                'ed_softmax': hp.Float('dloc_loss_weights', min_value=0.1, max_value=1, step=0.05),
-                'overload_softmax': hp.Float('dloc_loss_weights', min_value=0.1, max_value=1, step=0.05)
+                'ed_softmax': hp.Float('ed_loss_weights', min_value=0.1, max_value=1, step=0.05),
+                'overload_softmax': hp.Float('overload_loss_weights', min_value=0.1, max_value=1, step=0.05)
             },
             metrics=['accuracy']
         )
@@ -169,16 +169,16 @@ if __name__ == '__main__':
     start_time = time.time()
 
     # 设置gpu---------------------------------------------------------------------------------
-    # os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+    os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 
-    # gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
-    # cpus = tf.config.experimental.list_physical_devices(device_type='CPU')
-    # print(gpus, cpus)
+    gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
+    cpus = tf.config.experimental.list_physical_devices(device_type='CPU')
+    print(gpus, cpus)
 
-    # tf.config.experimental.set_virtual_device_configuration(
-    #     gpus[0],
-    #     [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)]
-    # )
+    tf.config.experimental.set_virtual_device_configuration(
+        gpus[0],
+        [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=2048)]
+    )
 
     # for gpu in gpus:
     #     tf.config.experimental.set_virtual_device_configuration(
@@ -188,7 +188,7 @@ if __name__ == '__main__':
 
     OBJECTIVE = kerastuner.Objective("val_f1_mean", direction="max")
     # OBJECTIVE = 'val_accuracy'
-    MAX_TRIALS = 15
+    MAX_TRIALS = 25
     EPOCHS = 2500
     BATCH_SIZE = 1024
     CUR_PATH = os.getcwd()
@@ -288,15 +288,10 @@ if __name__ == '__main__':
     # 获取前BEST_NUM个最优超参数--------------------------------------------------------------
     BEST_MODELS_NUM = 3
     best_models = tuner.get_best_models(BEST_MODELS_NUM)
-    best_hps = tuner.get_best_hyperparameters(BEST_MODELS_NUM)
-    best_hp_path = os.path.join(KERAS_TUNER_MODEL_DIR, 'best_%d_mmoe.json')
     for i in range(BEST_MODELS_NUM):
         top_model = best_models[i]
-        top_hp = best_hps[1]
         best_model_path = os.path.join(KERAS_TUNER_MODEL_DIR, 'best_%d_mmoe.h5' % i)
         top_model.save(best_model_path)
-        with open(best_hp_path, 'w') as f:
-            json.dump(top_hp, f)
 
     best_model = best_models[0]
     history = best_model.fit(x_train, [y_dloc_train, y_ED_train, y_overload_train], batch_size=BATCH_SIZE, epochs=EPOCHS,

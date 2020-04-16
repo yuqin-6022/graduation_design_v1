@@ -109,8 +109,8 @@ if __name__ == '__main__':
 
     OBJECTIVE = kerastuner.Objective("val_f1", direction="max")
     # OBJECTIVE = 'val_accuracy'
-    MAX_TRIALS = 15
-    EPOCHS = 25000
+    MAX_TRIALS = 25
+    EPOCHS = 10000
     BATCH_SIZE = 1024
     CUR_PATH = os.getcwd()
     DATETIME = datetime.now().strftime('%Y%m%d%H%M%S')
@@ -138,8 +138,8 @@ if __name__ == '__main__':
         os.makedirs(BEST_FIT_HISTORY_DIR)
 
     # 数据集-----------------------------------------------------------------------------------------------------------
-    train_df = pd.read_csv('../../../dataset/train.csv')
-    test_df = pd.read_csv('../../../dataset/test.csv')
+    train_df = pd.read_csv('../../dataset/train.csv')
+    test_df = pd.read_csv('../../dataset/test.csv')
 
     print('--------------------------------------------------------------------------------------------------------')
     print(y_type)
@@ -184,7 +184,7 @@ if __name__ == '__main__':
     PROJECT_NAME = '%s_single_dnn_keras_tuner_%s' % (y_type, DATETIME)
 
     # 实例化贝叶斯优化器
-    y_num = len(train_df[y_type].unique())
+    y_num = len(train_df[y_type].unique()) + (y_type == 'ED')  # ED从1~9开始，所以补一个输出
     hypermodel = MyHyperModel((x_train.shape[1],), y_num)
     tuner = BayesianOptimization(hypermodel, objective=OBJECTIVE, max_trials=MAX_TRIALS, directory=KERAS_TUNER_DIR, project_name=PROJECT_NAME)
     # 开始计时超参数搜索
@@ -205,12 +205,6 @@ if __name__ == '__main__':
     best_model = best_models[0]
     best_model_path = os.path.join(KERAS_TUNER_MODEL_DIR, '%s_best_dnn.h5' % y_type)
     best_model.save(best_model_path)
-
-    best_hps = tuner.get_best_hyperparameters()
-    best_hp = best_hps[0]
-    best_hp_path = os.path.join(KERAS_TUNER_MODEL_DIR, '%s_best_dnn.json' % y_type)
-    with open(best_hp_path, 'w') as f:
-        json.dump(best_hp, f)
 
     history = best_model.fit(x_train, y_train, class_weight=cw, batch_size=BATCH_SIZE, epochs=EPOCHS, validation_data=(x_valid, y_valid), callbacks=FIT_CALLBACKS, verbose=2)
     evaluate_result = best_model.evaluate(x_test, y_test)
