@@ -297,13 +297,7 @@ if __name__ == '__main__':
     history = best_model.fit(x_train, [y_dloc_train, y_ED_train, y_overload_train], batch_size=BATCH_SIZE, epochs=EPOCHS,
                              validation_data=(x_valid, [y_dloc_valid, y_ED_valid, y_overload_valid]), callbacks=FIT_CALLBACKS, verbose=2)
     evaluate_result = best_model.evaluate(x_test, [y_dloc_test, y_ED_test, y_overload_test])
-    total_loss = evaluate_result[0]
-    dloc_loss = evaluate_result[1]
-    ed_loss = evaluate_result[2]
-    overload_loss = evaluate_result[3]
-    dloc_accuracy = evaluate_result[4]
-    ed_accuracy = evaluate_result[5]
-    overload_accuracy = evaluate_result[6]
+    total_loss, dloc_loss, ed_loss, overload_loss, dloc_accuracy, ed_accuracy, overload_accuracy = evaluate_result
 
     print('------------------------------------------------------------------------------------------------------')
     print('evaluate_result', evaluate_result)
@@ -318,9 +312,9 @@ if __name__ == '__main__':
         history=history.history.__str__(),
         dloc_loss=float(dloc_loss),
         dloc_accuracy=float(dloc_accuracy),
-        ed_loss=float(dloc_loss),
+        ed_loss=float(ed_loss),
         ed_accuracy=float(ed_accuracy),
-        overload_loss=float(dloc_loss),
+        overload_loss=float(overload_loss),
         overload_accuracy=float(overload_accuracy),
     )
 

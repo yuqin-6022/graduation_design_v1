@@ -208,8 +208,7 @@ if __name__ == '__main__':
 
     history = best_model.fit(x_train, y_train, class_weight=cw, batch_size=BATCH_SIZE, epochs=EPOCHS, validation_data=(x_valid, y_valid), callbacks=FIT_CALLBACKS, verbose=2)
     evaluate_result = best_model.evaluate(x_test, y_test)
-    test_loss = evaluate_result[0]
-    test_accuracy = evaluate_result[1]
+    test_loss, test_accuracy = evaluate_result
 
     print('------------------------------------------------------------------------------------------------------')
     print('%s_test_result: ' % y_type)

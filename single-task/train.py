@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# @Time      : 2020/4/15 17:45
+# @Time      : 2020/4/16 17:54
 # @Author    : Shawn Li
-# @FileName  : single_lr.py
+# @FileName  : train.py
 # @IDE       : PyCharm
 # @Blog      : 暂无
 
@@ -19,7 +19,7 @@ import os
 import json
 
 
-# Metrics--------------------------------------------------------------------------------------------------------------
+# MultiMetrics---------------------------------------------------------------------------------------------------------
 class Metrics(tf.keras.callbacks.Callback):
     def __init__(self, valid_data):
         super(Metrics, self).__init__()
@@ -43,10 +43,13 @@ class Metrics(tf.keras.callbacks.Callback):
         return
 
 
+
 # 终端运行-------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     print('Starting...')
     start_time = time.time()
+    CUR_PATH = os.getcwd()
+    DATETIME = datetime.now().strftime('%Y%m%d%H%M%S')
 
     # 设置gpu---------------------------------------------------------------------------------
     os.environ['CUDA_VISIBLE_DEVICES'] = "0"
@@ -66,32 +69,41 @@ if __name__ == '__main__':
     #         [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)]
     #     )
 
-    experiment_type = 'dloc'
-    # experiment_type = 'ED'
-    # experiment_type = 'overload_loc'
+    model_type = 'normal'
+    # model_type = 'mini-dnn'
 
-    y_type = experiment_type
+    y_type = 'dloc'
+    # y_type = 'ED'
+    # y_type = 'overload_loc'
 
-    CUR_PATH = os.getcwd()
-    DATETIME = datetime.now().strftime('%Y%m%d%H%M%S')
+    MODEL_PATH = os.path.join(CUR_PATH, model_type, '%s_best_dnn.h5' % y_type)
 
-    EPOCHS = 150000
+    EPOCHS = 50000
     BATCH_SIZE = 1024
-    LEARNING_RATE = 0.01
 
-    RESULT_DIR = os.path.join(CUR_PATH, '%s_lr_%s' % (experiment_type, DATETIME))
-    if not os.path.exists(RESULT_DIR):
-        os.makedirs(RESULT_DIR)
-    WEIGHT_DIR = os.path.join(RESULT_DIR, 'weights')
-    os.makedirs(WEIGHT_DIR)
+    TRAIN_DIR = os.path.join(CUR_PATH, 'single_train')
+    if not os.path.exists(TRAIN_DIR):
+        os.makedirs(TRAIN_DIR)
+
+    BEST_F1_WEIGHTS_DIR = os.path.join(TRAIN_DIR, 'single_%s_best_f1' % model_type)
+    if not os.path.exists(BEST_F1_WEIGHTS_DIR):
+        os.makedirs(BEST_F1_WEIGHTS_DIR)
+    BEST_F1_WEIGHTS_DIR = os.path.join(BEST_F1_WEIGHTS_DIR, 'single_%s_best_f1' % y_type)
+    if not os.path.exists(BEST_F1_WEIGHTS_DIR):
+        os.makedirs(BEST_F1_WEIGHTS_DIR)
+
+
+    BEST_FIT_HISTORY_DIR = os.path.join(TRAIN_DIR, 'single_fit_history')
+    if not os.path.exists(BEST_FIT_HISTORY_DIR):
+        os.makedirs(BEST_FIT_HISTORY_DIR)
+    BEST_FIT_HISTORY_DIR = os.path.join(BEST_FIT_HISTORY_DIR, 'single_%s_fit_history' % model_type)
+    if not os.path.exists(BEST_FIT_HISTORY_DIR):
+        os.makedirs(BEST_FIT_HISTORY_DIR)
+
 
     # 数据集-----------------------------------------------------------------------------------------------------------
     train_df = pd.read_csv('../dataset/train.csv')
     test_df = pd.read_csv('../dataset/test.csv')
-
-    print('--------------------------------------------------------------------------------------------------------')
-    print(y_type)
-    print('--------------------------------------------------------------------------------------------------------')
 
     TEST_SIZE = 2700
 
@@ -103,42 +115,43 @@ if __name__ == '__main__':
 
     x_train, x_valid, y_train, y_valid = train_test_split(x_train_origin, y_train_origin, test_size=TEST_SIZE)
 
+
     # 标准化处理-------------------------------------------------------------------------------------------------------
     scaler = StandardScaler()
     x_train = scaler.fit_transform(x_train)
     x_valid = scaler.transform(x_valid)
     x_test = scaler.transform(x_test)
 
+    # 超参搜索开始-----------------------------------------------------------------------------------------------------
+    # 考虑样本权重-----------------------------------------------------------------------------------------------------
     my_class_weight = compute_class_weight('balanced', np.unique(y_train), y_train).tolist()
     cw = dict(zip(np.unique(y_train), my_class_weight))
     print(cw)
 
-    softmax_num = len(train_df[y_type].unique()) + (y_type == 'ED')  # ED从1~9开始，所以补一个输出
-    model = tf.keras.Sequential([
-        tf.keras.layers.Input(shape=(x_train.shape[1], )),
-        tf.keras.layers.Dense(units=softmax_num, activation='softmax')
-    ])
+    # CALLBACKS = [tf.keras.callbacks.EarlyStopping(patience=3)]
+    best_f1_weights_path = os.path.join(BEST_F1_WEIGHTS_DIR, '%s_f1_weight_epoch{epoch:02d}-valacc{val_accuracy:.4f}-valf1{val_f1:.4f}.hdf5' % y_type)
+    CALLBACKS = [
+        Metrics(valid_data=(x_valid, y_valid)),
+        # tf.keras.callbacks.ReduceLROnPlateau(monitor='val_accuracy', patience=10, factor=0.5, mode='auto'),
+        # tf.keras.callbacks.ReduceLROnPlateau(monitor='val_f1', patience=10, factor=0.5, mode='max'),
+        tf.keras.callbacks.ModelCheckpoint(best_f1_weights_path, monitor='val_f1', verbose=2, save_best_only=True, mode='max')
+    ]
+
+    model = tf.keras.models.load_model(MODEL_PATH)
 
     model.compile(
-        loss='sparse_categorical_crossentropy',
-        optimizer=tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE),
+        optimizer=model.optimizer,
+        loss=model.loss,
         metrics=['accuracy']
     )
 
-    weight_path = os.path.join(WEIGHT_DIR, '%s_lr_weight_lr%.4f_epoch{epoch:02d}-valacc{val_accuracy:.4f}-valf1{val_f1:.4f}.hdf5' % (y_type, LEARNING_RATE))
-    CALLBACKS = [
-        Metrics(valid_data=(x_valid, y_valid)),
-        # tf.keras.callbacks.ReduceLROnPlateau(monitor='val_accuracy', patience=10, factor=0.9, min_lr=0.001, mode='auto'),
-        tf.keras.callbacks.ModelCheckpoint(weight_path, monitor='val_f1', verbose=2, save_best_only=True, mode='max')
-    ]
-
-    history = model.fit(x_train, y_train, class_weight=cw, batch_size=BATCH_SIZE, epochs=EPOCHS, validation_data=(x_valid, y_valid), callbacks=CALLBACKS, verbose=2)
+    history = model.fit(x_train, y_train, batch_size=BATCH_SIZE, epochs=EPOCHS, class_weight=cw,
+                             validation_data=(x_valid, y_valid), callbacks=CALLBACKS, verbose=2)
     evaluate_result = model.evaluate(x_test, y_test)
     test_loss, test_accuracy = evaluate_result
 
     print('------------------------------------------------------------------------------------------------------')
-    print('%s_test_result: ' % y_type)
-    print('test_loss: %.4f, test_accuracy: %.4f' % (test_loss, test_accuracy))
+    print('evaluate_result', evaluate_result)
     print('------------------------------------------------------------------------------------------------------')
 
     end_time = time.time()
@@ -146,15 +159,14 @@ if __name__ == '__main__':
     print('Time_consuming: %d' % int(time_consuming))
 
     result = dict(
-        time_consuming = time_consuming,
+        time_consuming=int(time_consuming),
         history=history.history.__str__(),
         test_loss=float(test_loss),
-        test_accuracy=float(test_accuracy)
+        test_accuracy=float(test_accuracy),
     )
 
-    history_path = os.path.join(RESULT_DIR, '%s_lr_history.json' % (y_type))
+    history_path = os.path.join(BEST_FIT_HISTORY_DIR, '%s.json' % y_type)
     with open(history_path, 'w') as f:
         json.dump(result, f)
 
     print('Finish!')
-
