@@ -52,7 +52,7 @@ if __name__ == '__main__':
     DATETIME = datetime.now().strftime('%Y%m%d%H%M%S')
 
     # 设置gpu---------------------------------------------------------------------------------
-    os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+    os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 
     gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
     cpus = tf.config.experimental.list_physical_devices(device_type='CPU')
@@ -60,7 +60,7 @@ if __name__ == '__main__':
 
     tf.config.experimental.set_virtual_device_configuration(
         gpus[0],
-        [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)]
+        [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=2048)]
     )
 
     # for gpu in gpus:
@@ -69,12 +69,13 @@ if __name__ == '__main__':
     #         [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)]
     #     )
 
-    model_type = 'normal'
+    # model_type = 'normal'
     # model_type = 'mini-dnn'
+    model_type = 'mini-bn_after'
 
-    y_type = 'dloc'
+    # y_type = 'dloc'
     # y_type = 'ED'
-    # y_type = 'overload_loc'
+    y_type = 'overload_loc'
 
     MODEL_PATH = os.path.join(CUR_PATH, model_type, '%s_best_dnn.h5' % y_type)
 

@@ -86,7 +86,8 @@ if __name__ == '__main__':
     #     )
 
     # model_type = 'normal'
-    model_type = 'bn_after'
+    # model_type = 'bn_after'
+    model_type = 'bn_after-nodropout'
     MODEL_PATH = os.path.join(CUR_PATH, model_type, 'best_0_mmoe.h5')
 
     EPOCHS = 50000
